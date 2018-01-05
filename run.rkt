@@ -31,12 +31,12 @@
   (parameterize ([error-display-handler our-error-display-handler])
     (run rerun-default)))
 
-(define (run rr) ;rerun? -> void?
-  (match-define (rerun maybe-mod
-                       mem-limit
-                       pretty-print?
-                       context-level
-                       cmd-line-args) rr)
+(define (run rr) ; msg:rerun? -> void?
+  (match-define (msg:rerun maybe-mod
+                           mem-limit
+                           pretty-print?
+                           context-level
+                           cmd-line-args) rr)
   (define-values (dir file mod-path) (maybe-mod->dir/file/rmp maybe-mod))
   ;; Always set current-directory and current-load-relative-directory
   ;; to match the source file.
@@ -98,7 +98,7 @@
             ;; dynamic-require/some-namespace.
             (with-handlers ([exn? (λ (x)
                                     (display-exn x)
-                                    (put/stop (struct-copy rerun rr [maybe-mod #f])))])
+                                    (put/stop (struct-copy msg:rerun rr [maybe-mod #f])))])
               (maybe-load-language-info mod-path) ;FIRST: see #281
               (current-namespace (dynamic-require/some-namespace maybe-mod))
               (maybe-warn-about-submodules mod-path context-level)
@@ -136,8 +136,11 @@
   (custodian-shutdown-all repl-cust)
   (newline) ;; FIXME: Move this to racket-mode.el instead?
   (match msg
-    [(? rerun? x)  (run x)]
-    [(? load-gui?) (require-gui) (run rr)]))
+    [(? msg:rerun? new-rr) (run new-rr)]
+    [(msg:load-module mp)
+     (instantiate-once! mp)
+     (when (eq? mp 'racket/gui/base) (require-gui))
+     (run rr)]))
 
 (define (maybe-load-language-info path)
   ;; Load language-info (if any) and do configure-runtime.
@@ -175,11 +178,11 @@
       [(mp rmp stx)
        (repl-module-name-resolver mp rmp stx #t)]
       [(mp rmp stx load?)
-       (when (and load? (memq mp '(racket/gui/base
-                                   racket/gui/dynamic
-                                   scheme/gui/base)))
-         (unless (gui-required?)
-           (put/stop (load-gui))))
+       (cond
+         [(and load? (one-time-load-path mp))
+          => (λ (load-mp)
+               (unless (one-time-instantiated? load-mp)
+                 (put/stop (msg:load-module load-mp))))])
        (orig-resolver mp rmp stx load?)])))
 
 ;; Note: The `dynamic-require`s seem to be necessary otherwise

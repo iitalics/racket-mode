@@ -235,11 +235,11 @@
   (define (go what)
     (define maybe-mod (->mod/existing what))
     (when (or maybe-mod (eq? 'top which))
-      (put/stop (rerun maybe-mod
-                       (current-mem)
-                       (current-pp?)
-                       (current-ctx-lvl)
-                       (current-args)))))
+      (put/stop (msg:rerun maybe-mod
+                           (current-mem)
+                           (current-pp?)
+                           (current-ctx-lvl)
+                           (current-args)))))
   (match (match which
            ['run (read-line->reads)]
            ['top (cons #f (read-line->reads))]) ;i.e. what = #f

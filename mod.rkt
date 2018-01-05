@@ -7,6 +7,7 @@
          racket/format
          racket/match
          racket/string
+         racket/set
          syntax/location
          "util.rkt")
 
@@ -15,7 +16,10 @@
          ->mod/existing
          maybe-mod->dir/file/rmp
          maybe-mod->prompt-string
-         maybe-warn-about-submodules)
+         maybe-warn-about-submodules
+         one-time-load-path
+         one-time-instantiated?
+         instantiate-once!)
 
 (module+ test
   (require rackunit))
@@ -149,3 +153,30 @@
                or (module* _ #f ___) form when errortrace is enabled. Either
                upgrade Racket, or, set the Emacs variable racket-error-context
                to 'low or 'medium.})))
+
+(define/contract (one-time-load-path mp)
+  (-> module-path? (or/c #f symbol?))
+  (match mp
+    [(or 'racket/gui/base
+         'racket/gui/dynamic
+         'scheme/gui/base)
+     'racket/gui/base]
+    ['redex/reduction-semantics mp]
+    [else #f]))
+
+(define one-time-instantiated-modules
+  (mutable-seteq))
+
+(define/contract (one-time-instantiated? mp)
+  (-> symbol? boolean?)
+  (set-member? one-time-instantiated-modules mp))
+
+(define/contract (instantiate-once! mp)
+  (-> symbol? boolean?)
+  (cond
+    [(set-member? one-time-instantiated-modules mp) #f]
+    [else
+     (display-commented (format "on-demand one-time instantiation of ~a" mp))
+     (set-add! one-time-instantiated-modules mp)
+     (dynamic-require mp #f)
+     #t]))

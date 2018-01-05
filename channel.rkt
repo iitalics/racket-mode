@@ -6,8 +6,8 @@
 
 (provide main-channel
          (struct-out msg)
-         (struct-out load-gui)
-         (struct-out rerun)
+         (struct-out msg:load-module)
+         (struct-out msg:rerun)
          rerun-default
          context-level?
          instrument-level?
@@ -45,8 +45,8 @@
 ;; Messages to the main thread via a channel
 (define main-channel (make-channel))
 (define-struct/contract msg ())
-(define-struct/contract [load-gui msg] ())
-(define-struct/contract [rerun msg]
+(define-struct/contract [msg:load-module msg] ([path symbol?]))
+(define-struct/contract [msg:rerun msg]
   ([maybe-mod     (or/c #f mod?)]
    [memory-limit  exact-nonnegative-integer?] ;0 = no limit
    [pretty-print? boolean?]
@@ -57,7 +57,7 @@
    ;; `current-command-line-arguments`. WAT.
    [cmd-line-args vector?]))
 
-(define rerun-default (rerun #f 0 #f 'low #()))
+(define rerun-default (msg:rerun #f 0 #f 'low #()))
 
 ;; To be called from REPL thread. Puts message for the main thread to
 ;; the channel, and blocks itself; main thread will kill the REPL
